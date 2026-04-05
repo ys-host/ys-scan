@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YS Scanner</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0f1a;--card:#131724;--card2:#1a1f30;--b1:#252d42;--b2:#303a55;--b3:#4a567a;
+  --t1:#e8ecf4;--t2:#b8c2d8;--t3:#7a8aaa;--t4:#4a567a;
+  --grn:#10b068;--gnbg:#0a2818;--gnb:#1a5e38;
+  --red:#e03535;--rdbg:#280a0a;--rdb:#5e1a1a;
+  --amb:#e08a10;--abbg:#281a00;--abb:#5e3c00;
+  --blu:#2a6aff;--blbg:#0a1428;--blb:#1a3a7a;
+  --pur:#7c38e0;--pubg:#180a28;--pub:#3c1a6a;
+  --sh:0 2px 12px rgba(0,0,0,.4);
+  --sans:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;--display:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--t1);min-height:100vh;font-size:13px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--b3);border-radius:2px}
+
+/* ── PASSWORD ─────────────────────────────────────────────────── */
+.pwov{position:fixed;inset:0;background:rgba(4,6,14,.96);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(8px)}
+.pwbox{background:var(--card);border:1px solid var(--b2);border-radius:18px;padding:40px 36px;text-align:center;width:340px;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+.pwico{font-size:48px;margin-bottom:10px}
+.pwtit{font-family:var(--display);font-size:22px;font-weight:800;color:var(--t1);margin-bottom:4px}
+.pwsub{font-size:12px;color:var(--t3);margin-bottom:22px}
+.pwinp{width:100%;background:var(--card2);border:1.5px solid var(--b2);border-radius:9px;padding:12px 14px;font-size:15px;font-family:var(--mono);outline:none;text-align:center;color:var(--t1);letter-spacing:.12em}
+.pwinp:focus{border-color:var(--blu)}.pwinp.err{border-color:var(--red);animation:shk .35s}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pwbtn{width:100%;margin-top:12px;background:var(--blu);color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;cursor:pointer}
+.pwbtn:hover{background:#1a5aef}
+
+/* ── PRESENCE WARNING OVERLAY ──────────────────────────────────── */
+.warn-ov{position:fixed;inset:0;background:rgba(4,6,14,.88);display:flex;align-items:center;justify-content:center;z-index:8888;backdrop-filter:blur(6px);display:none}
+.warn-box{background:var(--card);border:2px solid var(--amb);border-radius:16px;padding:32px 36px;text-align:center;max-width:380px;box-shadow:0 0 40px rgba(224,138,16,.25)}
+.warn-icon{font-size:48px;margin-bottom:8px}
+.warn-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--amb);margin-bottom:6px}
+.warn-sub{font-size:12px;color:var(--t3);margin-bottom:16px;line-height:1.6}
+.warn-countdown{font-size:36px;font-weight:700;font-family:var(--mono);color:var(--red);margin-bottom:18px}
+.warn-btn{width:100%;padding:13px;background:var(--grn);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.warn-btn:hover{filter:brightness(.9)}
+.warn-dismiss{font-size:11px;color:var(--t3);cursor:pointer;text-decoration:underline}
+
+/* ── STOP CONFIRM OVERLAY ──────────────────────────────────────── */
+.stop-ov{position:fixed;inset:0;background:rgba(4,6,14,.88);display:flex;align-items:center;justify-content:center;z-index:8887;display:none}
+.stop-box{background:var(--card);border:2px solid var(--red);border-radius:16px;padding:28px 32px;text-align:center;max-width:360px;box-shadow:0 0 40px rgba(224,53,53,.25)}
+.stop-title{font-family:var(--display);font-size:18px;font-weight:800;color:var(--red);margin-bottom:10px}
+.stop-sub{font-size:12px;color:var(--t3);margin-bottom:20px;line-height:1.6}
+.stop-row{display:flex;gap:10px}
+.stop-yes{flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.stop-no{flex:1;padding:11px;background:var(--card2);color:var(--t3);border:1px solid var(--b2);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.hdr{background:var(--card);border-bottom:1px solid var(--b1);padding:8px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:300;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:8px}
+.pulse{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pulse.on{background:var(--grn);animation:pls 2s infinite}
+.pulse.off{background:var(--red)}
+.pulse.warn{background:var(--amb);animation:pls 1s infinite}
+@keyframes pls{0%{box-shadow:0 0 0 0 rgba(16,176,104,.4)}70%{box-shadow:0 0 0 6px rgba(16,176,104,0)}100%{box-shadow:0 0 0 0 rgba(16,176,104,0)}}
+.logo-m{font-family:var(--display);font-size:15px;font-weight:800;color:var(--t1)}
+.logo-s{font-size:9px;color:var(--t3);font-family:var(--mono);margin-top:1px}
+.mpill{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
+.mp-o{background:var(--gnbg);color:var(--grn);border:1px solid var(--gnb)}
+.mp-p{background:var(--abbg);color:var(--amb);border:1px solid var(--abb)}
+.mp-c{background:var(--card2);color:var(--t4);border:1px solid var(--b1)}
+.ticker{display:flex;align-items:center;background:var(--card2);border:1px solid var(--b1);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.ti{display:flex;align-items:center;gap:4px;padding:5px 10px;border-right:1px solid var(--b1);font-family:var(--mono);font-size:11px}
+.ti:last-of-type{border-right:none}
+.til{color:var(--t3);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.tiv{color:var(--t1);font-size:12px;font-weight:700}
+.tic{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px}
+.tic.up{background:var(--gnbg);color:var(--grn)}.tic.dn{background:var(--rdbg);color:var(--red)}.tic.fl{background:var(--card2);color:var(--t4)}
+.hsp{flex:1}
+.last-scan{font-size:10px;color:var(--t3);font-family:var(--mono);white-space:nowrap}
+
+/* ── CONTROL BAR ─────────────────────────────────────────────────── */
+.ctrl-bar{background:var(--card);border-bottom:1px solid var(--b1);padding:7px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cbtn{padding:6px 14px;font-size:11px;font-weight:700;border-radius:7px;cursor:pointer;border:none;font-family:var(--sans);display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.cbtn-present{background:var(--gnbg);color:var(--grn);border:1.5px solid var(--gnb)}
+.cbtn-present.active{background:var(--grn);color:#fff}
+.cbtn-present:hover{background:var(--grn);color:#fff}
+.cbtn-scan{background:var(--blu);color:#fff}
+.cbtn-scan:hover{filter:brightness(.9)}
+.cbtn-stop{background:var(--rdbg);color:var(--red);border:1.5px solid var(--rdb)}
+.cbtn-stop:hover{background:var(--rdb)}
+.ctrl-sep{width:1px;height:20px;background:var(--b1)}
+.scan-status{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono)}
+.scan-dot{width:7px;height:7px;border-radius:50%}
+.scan-dot.running{background:var(--grn);animation:pls 1.5s infinite}
+.scan-dot.stopped{background:var(--red)}
+.scan-dot.absent{background:var(--amb);animation:pls 1s infinite}
+
+/* ── SCENARIO BANNER ─────────────────────────────────────────────── */
+.scenario-bar{padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--b1)}
+.scenario-label{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.sc-btn{padding:6px 14px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;border:1.5px solid transparent;font-family:var(--sans);transition:all .15s;white-space:nowrap}
+.sc-a{color:#10b068;border-color:var(--gnb);background:var(--gnbg)}
+.sc-a.on{background:var(--grn);color:#fff;border-color:var(--grn)}
+.sc-b{color:var(--red);border-color:var(--rdb);background:var(--rdbg)}
+.sc-b.on{background:var(--red);color:#fff;border-color:var(--red)}
+.sc-c{color:var(--amb);border-color:var(--abb);background:var(--abbg)}
+.sc-c.on{background:var(--amb);color:#fff;border-color:var(--amb)}
+.sc-d{color:var(--t3);border-color:var(--b2);background:var(--card2)}
+.sc-d.on{background:var(--t3);color:var(--bg);border-color:var(--t3)}
+.sc-rule{font-size:11px;font-family:var(--mono);padding:5px 12px;border-radius:5px;white-space:nowrap;flex:1}
+
+/* ── MAIN ────────────────────────────────────────────────────────── */
+.main{padding:10px 16px}
+
+/* ── STRATEGY TABS ────────────────────────────────────────────────── */
+.tabs{display:flex;border-bottom:1px solid var(--b1);background:var(--card);overflow-x:auto;position:sticky;top:94px;z-index:200}
+.tab{padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;color:var(--t3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--t1);background:var(--card2)}.tab.on{color:var(--blu);border-bottom-color:var(--blu)}
+.tab-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;background:var(--gnbg);color:var(--grn);margin-left:4px}
+.tc{display:none}.tc.on{display:block}
+
+/* ── FILTER PANEL ─────────────────────────────────────────────────── */
+.filter-panel{background:var(--card);border:1px solid var(--b1);border-radius:10px;overflow:hidden;margin-bottom:10px;box-shadow:var(--sh)}
+.fp-hdr{padding:9px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.fp-hdr:hover{background:var(--card2)}
+.fp-title{font-size:12px;font-weight:700;color:var(--t2)}
+.fp-chev{color:var(--t3);font-size:11px;transition:transform .2s}
+.fp-chev.open{transform:rotate(180deg)}
+.fp-body{padding:12px 14px;display:none}
+.fp-body.show{display:block}
+.fp-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin:10px 0 7px}
+.fp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
+.fc{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--b1);border-radius:7px;padding:7px 10px}
+.fc-toggle{position:relative;width:32px;height:18px;flex-shrink:0}
+.fc-toggle input{opacity:0;width:0;height:0;position:absolute}
+.fc-slider{position:absolute;inset:0;background:var(--b2);border-radius:18px;cursor:pointer;transition:background .15s}
+.fc-slider::before{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .15s}
+.fc-toggle input:checked + .fc-slider{background:var(--grn)}
+.fc-toggle input:checked + .fc-slider::before{transform:translateX(14px)}
+.fc-lbl{font-size:11px;color:var(--t2);flex:1;line-height:1.3}
+.fc-lbl span{font-size:9px;color:var(--t3);display:block}
+.fc-val{background:var(--bg);border:1px solid var(--b2);border-radius:4px;color:var(--t1);font-family:var(--mono);font-size:11px;padding:3px 6px;width:60px;outline:none}
+.fc-val:focus{border-color:var(--blu)}
+.disp-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
+.df-label{font-size:11px;color:var(--t3)}
+.df-sel{background:var(--card2);border:1px solid var(--b2);border-radius:5px;color:var(--t1);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;cursor:pointer}
+.df-inp{background:var(--card2);border:1px solid var(--b2);border-radius:5px;color:var(--t1);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;width:70px}
+.df-inp:focus{border-color:var(--blu)}
+
+/* ── STATS BAR ────────────────────────────────────────────────────── */
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-bottom:10px}
+.stat{background:var(--card);border:1px solid var(--b1);border-radius:8px;padding:8px 12px;text-align:center}
+.stat-v{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--t1)}
+.stat-l{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* ── RESULTS TABLE ────────────────────────────────────────────────── */
+.tbl-wrap{background:var(--card);border:1px solid var(--b1);border-radius:10px;overflow:hidden;box-shadow:var(--sh)}
+.tbl-hdr{padding:9px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tbl-title{font-size:13px;font-weight:700;color:var(--t1)}
+.tbl-ts{font-size:10px;color:var(--t3);font-family:var(--mono)}
+.export-btn{padding:4px 10px;font-size:10px;font-weight:700;border:1px solid var(--b2);border-radius:5px;background:var(--card2);color:var(--t3);cursor:pointer}
+.export-btn:hover{border-color:var(--blu);color:var(--blu);background:var(--blbg)}
+.ts{overflow-x:auto}
+.ts table{width:100%;border-collapse:collapse;font-size:12px}
+.ts thead tr{background:var(--card2);border-bottom:1px solid var(--b1)}
+.ts th{padding:7px 10px;font-weight:700;color:var(--t3);font-size:10px;white-space:nowrap;cursor:pointer;user-select:none;text-transform:uppercase;letter-spacing:.04em}
+.ts th:hover{color:var(--t1)}
+.ts td{padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t2);font-size:12px;vertical-align:middle}
+.ts tbody tr:last-child td{border-bottom:none}
+.ts tbody tr:hover td{background:var(--card2)}
+.ts tbody tr.new-row{animation:newrow .8s ease}
+@keyframes newrow{from{background:rgba(16,176,104,.15)}to{background:transparent}}
+.ts td:first-child{font-family:var(--mono);font-weight:600;font-size:12px}
+.no-data{text-align:center;padding:40px;color:var(--t4);font-size:12px}
+
+/* ── TAGS ─────────────────────────────────────────────────────────── */
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block;cursor:pointer}
+.tag-BL{background:var(--gnbg);color:var(--grn);border:1px solid var(--gnb)}
+.tag-FS{background:#1a0e00;color:#e08a10;border:1px solid #5e3c00}
+.tag-BD{background:var(--rdbg);color:var(--red);border:1px solid var(--rdb)}
+.tag-FL{background:var(--pubg);color:#a060ff;border:1px solid var(--pub)}
+
+/* ── SIGNAL STRENGTH ─────────────────────────────────────────────── */
+.sig{display:flex;gap:2px;align-items:center}
+.sig-dot{width:8px;height:8px;border-radius:2px}
+.sig-dot.fill{background:var(--grn)}.sig-dot.fill.red{background:var(--red)}.sig-dot.empty{background:var(--b2)}
+
+/* ── STREAK BADGE ─────────────────────────────────────────────────── */
+.streak{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;font-family:var(--mono)}
+.streak.hot{background:var(--gnbg);color:var(--grn)}
+.streak.med{background:var(--abbg);color:var(--amb)}
+.streak.low{background:var(--card2);color:var(--t4)}
+
+/* ── COPY BUTTON ──────────────────────────────────────────────────── */
+.cp{font-size:10px;cursor:pointer;color:var(--t4);padding:2px 5px;border:1px solid var(--b1);border-radius:3px;background:var(--card)}
+.cp:hover{color:var(--grn);border-color:var(--gnb);background:var(--gnbg)}
+
+/* ── EXPANDABLE ROW ───────────────────────────────────────────────── */
+.expand-row td{background:var(--card2);padding:12px 16px}
+.mtf-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.mtf-table th{padding:5px 10px;background:var(--bg);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--t3)}
+.mtf-table td{padding:6px 10px;border-bottom:1px solid var(--b1);font-family:var(--mono)}
+.mtf-bull{color:var(--grn)}.mtf-bear{color:var(--red)}.mtf-neu{color:var(--t4)}
+
+/* ── CHECKLIST PANEL ──────────────────────────────────────────────── */
+.chk-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px}
+@media(max-width:700px){.chk-grid{grid-template-columns:1fr 1fr}}
+.chk-item{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--bg);border-radius:5px;cursor:pointer;border:1px solid var(--b1)}
+.chk-item.done{background:var(--gnbg);border-color:var(--gnb)}
+.chk-cb{width:14px;height:14px;border:1.5px solid var(--b3);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.chk-item.done .chk-cb{background:var(--grn);border-color:var(--grn)}
+.chk-cb::after{content:'';display:none;width:3px;height:6px;border:1.5px solid #fff;border-top:none;border-left:none;transform:rotate(45deg)}
+.chk-item.done .chk-cb::after{display:block}
+.chk-lbl{font-size:10px;color:var(--t2)}
+.chk-item.done .chk-lbl{text-decoration:line-through;color:var(--t4)}
+.chk-progress{font-size:11px;font-family:var(--mono);color:var(--t3);margin-bottom:6px}
+.chk-bar{height:3px;background:var(--b1);border-radius:2px;margin-bottom:8px;overflow:hidden}
+.chk-fill{height:100%;background:var(--grn);transition:width .3s}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────── */
+.btn{padding:5px 12px;font-size:11px;font-weight:700;border:none;border-radius:6px;cursor:pointer;font-family:var(--sans)}
+.bgn{background:var(--grn);color:#fff}.bgn:hover{filter:brightness(.9)}
+.brd{background:var(--rdbg);color:var(--red);border:1.5px solid var(--rdb);cursor:pointer;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;font-family:var(--sans)}
+.brd:hover{background:var(--rdb);color:#fff}
+.chg-up{color:var(--grn);font-weight:700}.chg-dn{color:var(--red);font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- PASSWORD -->
+<div id="pwOv" class="pwov" style="display:none">
+  <div class="pwbox">
+    <div class="pwico">&#x1F4E1;</div>
+    <div class="pwtit">YS Scanner</div>
+    <div class="pwsub">Enter password to access live scanner</div>
+    <input type="password" class="pwinp" id="pwF" placeholder="Password">
+    <button class="pwbtn" onclick="checkPwd()">Open Scanner</button>
+  </div>
+</div>
+
+<!-- PRESENCE WARNING (11:15-11:30) -->
+<div id="warnOv" class="warn-ov">
+  <div class="warn-box">
+    <div class="warn-icon">&#x23F0;</div>
+    <div class="warn-title">Confirm Presence</div>
+    <div class="warn-sub">Scanner auto-shuts at 11:30 AM to save resources.<br>Click below to confirm you&#x2019;re trading today.</div>
+    <div class="warn-countdown" id="warnCountdown">15:00</div>
+    <button class="warn-btn" onclick="confirmPresence(true)">&#x2713; I&#x2019;m Present &#x2014; Keep Scanner Running</button>
+    <span class="warn-dismiss" onclick="dismissWarning()">Dismiss (scanner will stop at 11:30)</span>
+  </div>
+</div>
+
+<!-- STOP TODAY CONFIRM -->
+<div id="stopOv" class="stop-ov">
+  <div class="stop-box">
+    <div class="stop-title">&#x1F6D1; Stop Scanner Today?</div>
+    <div class="stop-sub">This will stop all automatic scanning for today.<br>Angel One API calls will stop immediately.<br><b>To resume:</b> click &#x201C;Scan Now&#x201D; button.</div>
+    <div class="stop-row">
+      <button class="stop-yes" onclick="confirmStop()">Yes, Stop Today</button>
+      <button class="stop-no" onclick="closeStopOverlay()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="logo">
+    <div class="pulse off" id="scanPulse"></div>
+    <div>
+      <div class="logo-m">YS Scanner<span id="hMkt" class="mpill mp-c">Closed</span></div>
+      <div class="logo-s" id="hDT">Loading...</div>
+    </div>
+  </div>
+  <div class="ticker">
+    <div class="ti"><span class="til">Nifty</span><span class="tiv" id="tn50">&#x2014;</span><span class="tic fl" id="tc50">&#x2014;</span></div>
+    <div class="ti"><span class="til">BankNifty</span><span class="tiv" id="tbnk">&#x2014;</span><span class="tic fl" id="tcbnk">&#x2014;</span></div>
+    <div class="ti"><span class="til">VIX</span><span class="tiv" id="tvix">&#x2014;</span><span class="tic fl" id="tcvix">&#x2014;</span></div>
+  </div>
+  <div class="hsp"></div>
+  <div class="last-scan" id="lastScanTime">Last scan: &#x2014;</div>
+  <a href="/" style="font-size:11px;color:var(--t3);text-decoration:none;padding:4px 10px;border:1px solid var(--b1);border-radius:5px;background:var(--card2)">&#x2190; Dashboard</a>
+</div>
+
+<!-- CONTROL BAR -->
+<div class="ctrl-bar">
+  <button class="cbtn cbtn-present" id="presentBtn" onclick="confirmPresence(false)">
+    <span id="presentIcon">&#x1F464;</span>
+    <span id="presentLabel">I&#x2019;m Present Today</span>
+  </button>
+  <div class="ctrl-sep"></div>
+  <button class="cbtn cbtn-scan" onclick="triggerScanNow()">&#x25BA; Scan Now</button>
+  <button class="cbtn cbtn-stop" onclick="openStopOverlay()">&#x1F6D1; Stop Today</button>
+  <div class="ctrl-sep"></div>
+  <div class="scan-status">
+    <div class="scan-dot stopped" id="scanDot"></div>
+    <span id="scanStatusText" style="color:var(--t3)">Loading...</span>
+  </div>
+  <div class="hsp"></div>
+  <span style="font-size:10px;color:var(--t4);font-family:var(--mono)" id="scanCount">Scans today: 0</span>
+</div>
+
+<!-- SCENARIO BANNER -->
+<div class="scenario-bar">
+  <span class="scenario-label">Today&#x2019;s Scenario:</span>
+  <button class="sc-btn sc-a" id="sc-A" onclick="setScenario('A')">A &#x2014; Trending Bull</button>
+  <button class="sc-btn sc-b" id="sc-B" onclick="setScenario('B')">B &#x2014; Trending Bear</button>
+  <button class="sc-btn sc-c" id="sc-C" onclick="setScenario('C')">C &#x2014; Gap Reversal</button>
+  <button class="sc-btn sc-d" id="sc-D" onclick="setScenario('D')">D &#x2014; Choppy</button>
+  <div class="sc-rule" id="scRule" style="color:var(--t3)">Select scenario &#x2192; direction locks for the day</div>
+</div>
+
+<!-- STRATEGY TABS -->
+<div class="tabs">
+  <div class="tab on" onclick="showTab('orb',this)">&#x1F7E2; ORB HTF <span class="tab-badge" id="orb-badge">0</span></div>
+  <div class="tab" onclick="showTab('rev',this)">&#x1F7E1; ORB Reversal <span class="tab-badge" id="rev-badge">0</span></div>
+  <div class="tab" onclick="showTab('of',this)">&#x1F535; Order Flow <span style="font-size:9px;color:var(--t4);margin-left:4px">(soon)</span></div>
+</div>
+
+<!-- ── ORB HTF TAB ─────────────────────────────────────────── -->
+<div class="tc on" id="tab-orb"><div class="main">
+
+<div class="filter-panel">
+  <div class="fp-hdr" onclick="toggleFP('fp-orb-body','fp-orb-chev')">
+    <span style="font-size:14px">&#x1F527;</span>
+    <span class="fp-title">Scanner Conditions &#x2014; HTF v3 (click to edit thresholds)</span>
+    <div class="hsp"></div>
+    <span class="fp-chev open" id="fp-orb-chev">&#x25BC;</span>
+  </div>
+  <div class="fp-body show" id="fp-orb-body">
+    <div class="fp-section">Intraday Conditions (5-min)</div>
+    <div class="fp-grid">
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_gap"><span class="fc-slider"></span></label><div class="fc-lbl">Gap Filter (±%)<span>Open within % of prev close</span></div><input class="fc-val" id="fv_gap" value="1.5"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_brk"><span class="fc-slider"></span></label><div class="fc-lbl">Breakout<span>Close &gt; prev candle High</span></div><span style="font-size:10px;color:var(--grn)">Always ON</span></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_vol"><span class="fc-slider"></span></label><div class="fc-lbl">Volume Surge Min (×SMA20)<span>Minimum volume multiplier</span></div><input class="fc-val" id="fv_vol" value="2.5"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_volmax"><span class="fc-slider"></span></label><div class="fc-lbl">Volume Cap Max (×SMA20)<span>Exclude panic spikes</span></div><input class="fc-val" id="fv_volmax" value="8.0"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_range"><span class="fc-slider"></span></label><div class="fc-lbl">Max Candle Range (%)<span>Controlled moves only</span></div><input class="fc-val" id="fv_range" value="2.5"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_ext"><span class="fc-slider"></span></label><div class="fc-lbl">Max Extension from Close (%)<span>Not already up &gt; X%</span></div><input class="fc-val" id="fv_ext" value="5.0"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_price"><span class="fc-slider"></span></label><div class="fc-lbl">Min Price (₹)<span>Quality filter</span></div><input class="fc-val" id="fv_price" value="150"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_mcap"><span class="fc-slider"></span></label><div class="fc-lbl">Min Market Cap (Cr)<span>Institutional stocks only</span></div><input class="fc-val" id="fv_mcap" value="3000"></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_dvol"><span class="fc-slider"></span></label><div class="fc-lbl">Min Daily Volume (L shares)<span>Yesterday volume</span></div><input class="fc-val" id="fv_dvol" value="15"></div>
+    </div>
+    <div class="fp-section">HTF Conditions (Daily/Weekly — v3 new)</div>
+    <div class="fp-grid">
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_ema20"><span class="fc-slider"></span></label><div class="fc-lbl">Daily EMA20<span>Price above 20-day EMA (uptrend)</span></div><span style="font-size:10px;color:var(--grn)">Above ✅</span></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_sma50"><span class="fc-slider"></span></label><div class="fc-lbl">Daily SMA50<span>Weekly trend proxy (institutional)</span></div><span style="font-size:10px;color:var(--grn)">Above ✅</span></div>
+      <div class="fc"><label class="fc-toggle"><input type="checkbox" checked id="fc_mom"><span class="fc-slider"></span></label><div class="fc-lbl">Trend Momentum<span>Higher than close 20 days ago</span></div><span style="font-size:10px;color:var(--grn)">Higher ✅</span></div>
+    </div>
+    <div class="disp-filters">
+      <span class="df-label">Display filter:</span>
+      <select class="df-sel" id="df_tag" onchange="applyFilters()"><option value="all">All Tags</option><option value="BL">BL only</option><option value="FS">FS only</option><option value="BD">BD only</option><option value="FL">FL only</option></select>
+      <span class="df-label">Min Score</span>
+      <input class="df-inp" id="df_score" type="number" value="0" step="5" oninput="applyFilters()">
+      <span class="df-label">Min Freq</span>
+      <input class="df-inp" id="df_freq" type="number" value="1" step="1" min="1" oninput="applyFilters()">
+      <span class="df-label">Min Vol Ratio</span>
+      <input class="df-inp" id="df_volr" type="number" value="0" step="0.5" oninput="applyFilters()">
+      <button onclick="resetFilters()" class="brd" style="padding:4px 10px;font-size:10px">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="stats-bar" id="orbStats">
+  <div class="stat"><div class="stat-v" id="st_total">0</div><div class="stat-l">Total Stocks</div></div>
+  <div class="stat"><div class="stat-v" style="color:var(--grn)" id="st_bull">0</div><div class="stat-l">Bullish (BL)</div></div>
+  <div class="stat"><div class="stat-v" style="color:var(--red)" id="st_bear">0</div><div class="stat-l">Bearish (BD)</div></div>
+  <div class="stat"><div class="stat-v" style="color:var(--amb)" id="st_high">0</div><div class="stat-l">High Score (&gt;75)</div></div>
+  <div class="stat"><div class="stat-v" style="color:var(--grn)" id="st_streak">0</div><div class="stat-l">Hot Streak (≥3)</div></div>
+  <div class="stat"><div class="stat-v" style="color:var(--t3)" id="st_avg">0</div><div class="stat-l">Avg Score</div></div>
+</div>
+
+<div class="tbl-wrap">
+  <div class="tbl-hdr">
+    <span class="tbl-title">&#x1F4CA; Live Scan Results &#x2014; ORB HTF v3</span>
+    <span class="tbl-ts" id="tblTs">&#x2014;</span>
+    <div class="hsp"></div>
+    <button class="export-btn" onclick="exportCSV()">&#x2B07; CSV</button>
+    <button class="export-btn" onclick="copySymbols()">&#x29C9; Copy Symbols</button>
+  </div>
+  <div class="ts">
+    <table>
+      <thead><tr>
+        <th onclick="sortBy('symbol')" style="text-align:left;padding-left:14px">Symbol &#x21C5;</th>
+        <th>Tag</th>
+        <th onclick="sortBy('sector')" style="text-align:left">Sector &#x21C5;</th>
+        <th onclick="sortBy('change_pct')">Chg% &#x21C5;</th>
+        <th onclick="sortBy('vol_ratio')">Vol Ratio &#x21C5;</th>
+        <th onclick="sortBy('freq_count')">Freq &#x21C5;</th>
+        <th onclick="sortBy('streak')">Streak &#x21C5;</th>
+        <th onclick="sortBy('delivery_pct')">Del% &#x21C5;</th>
+        <th onclick="sortBy('score')">Score &#x21C5;</th>
+        <th>Last Seen</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="orbBody"><tr><td colspan="11" class="no-data">Waiting for scan data...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+</div></div>
+
+<!-- ── ORB REVERSAL TAB ────────────────────────────────────────── -->
+<div class="tc" id="tab-rev"><div class="main">
+  <div class="tbl-wrap">
+    <div class="tbl-hdr">
+      <span class="tbl-title">&#x1F504; ORB Reversal Setups (FL / FS)</span>
+      <span class="tbl-ts" id="revTs">&#x2014;</span>
+      <div class="hsp"></div>
+      <button class="export-btn" onclick="exportCSV('rev')">&#x2B07; CSV</button>
+    </div>
+    <div class="ts">
+      <table><thead><tr>
+        <th style="text-align:left;padding-left:14px">Symbol</th>
+        <th>Tag</th><th>Sector</th><th>Chg%</th><th>Vol Ratio</th>
+        <th>Freq</th><th>Streak</th><th>Score</th><th>Last Seen</th><th></th>
+      </tr></thead>
+      <tbody id="revBody"><tr><td colspan="10" class="no-data">Fakeout setups appear here when ORB breakout volume &lt; 2.5× and reverses</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+
+<!-- ── ORDER FLOW TAB ─────────────────────────────────────────── -->
+<div class="tc" id="tab-of"><div class="main">
+  <div style="text-align:center;padding:60px;color:var(--t4)">
+    <div style="font-size:40px;margin-bottom:12px">&#x1F6A7;</div>
+    <div style="font-size:14px;font-weight:700;color:var(--t2);margin-bottom:6px">Order Flow Strategy &#x2014; Coming Soon</div>
+    <div style="font-size:12px;line-height:1.7">This tab will detect large bid/ask imbalance and block trades.<br>Requires Angel One Smart Order Book data (Level 2).</div>
+  </div>
+</div></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG — replace with your values
+// ════════════════════════════════════════════════════════════════
+var SUPA_URL  = 'https://gshrxfkqlfktnjnwxlot.supabase.co';
+var SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzaHJ4ZmtxbGZrdG5qbnd4bG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODM1MjAsImV4cCI6MjA5MDI1OTUyMH0.1LZFzZb_TMKUDuJoXNZn7HHncn9-nWXha18eoFgx0mE';
+// GitHub PAT + repo (stored in Supabase app_settings for security, or set here for testing)
+var GH_REPO   = 'ys-host/ys-trading';          // rename from ys-scan
+var GH_WF     = 'angel_scanner.yml';
+
+var sb   = null;
+var IST  = 'Asia/Kolkata';
+var D    = { picks: [], control: null, scenario: null };
+var sortCol = 'score';
+var sortAsc = false;
+
+// ── Init ──────────────────────────────────────────────────────
+function getTodayIST() {
+  var d = new Date(new Date().toLocaleString('en-US', {timeZone: IST}));
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function getISTNow() { return new Date(new Date().toLocaleString('en-US', {timeZone: IST})); }
+function ISTmins() { var d = getISTNow(); return d.getHours()*60 + d.getMinutes(); }
+
+// ── Password ──────────────────────────────────────────────────
+function initPwd() {
+  try { if (sessionStorage.getItem('ys_a') === '1') return; } catch(e) {}
+  var p = 'ys@trading';
+  try { p = localStorage.getItem('ys_pwd') || 'ys@trading'; } catch(e) {}
+  document.getElementById('pwOv').style.display = 'flex';
+  document.getElementById('pwF').addEventListener('keydown', function(e){ if(e.key==='Enter') checkPwd(); });
+}
+function checkPwd() {
+  var f = document.getElementById('pwF');
+  var p = 'ys@trading';
+  try { p = localStorage.getItem('ys_pwd') || 'ys@trading'; } catch(e) {}
+  if (f.value === p) {
+    document.getElementById('pwOv').style.display = 'none';
+    try { sessionStorage.setItem('ys_a','1'); } catch(e) {}
+  } else {
+    f.classList.add('err'); f.value = '';
+    setTimeout(function(){ f.classList.remove('err'); }, 1200);
+  }
+}
+
+// ── Supabase ──────────────────────────────────────────────────
+function initSupa() {
+  try {
+    sb = window.supabase.createClient(SUPA_URL, SUPA_ANON);
+  } catch(e) { console.warn('Supabase init failed:', e); }
+}
+
+// ── Clock ─────────────────────────────────────────────────────
+function tickClock() {
+  var d = getISTNow();
+  var mn = d.getHours()*60 + d.getMinutes();
+  document.getElementById('hDT').textContent =
+    d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}) + '\u00a0' +
+    d.toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short'});
+  var mk = document.getElementById('hMkt');
+  if (mn >= 555 && mn < 915)      { mk.textContent='Pre-market'; mk.className='mpill mp-p'; }
+  else if (mn >= 915 && mn < 920) { mk.textContent='ORB Forming'; mk.className='mpill mp-p'; }
+  else if (mn >= 920 && mn < 1110){ mk.textContent='Market Open'; mk.className='mpill mp-o'; }
+  else                             { mk.textContent='Closed'; mk.className='mpill mp-c'; }
+}
+
+// ── Market Data (2-sec polling) ────────────────────────────────
+var PROX = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?'];
+var proxIdx = 0;
+var TIDX = [
+  {id:'tn50',cid:'tc50',sym:'^NSEI'},{id:'tbnk',cid:'tcbnk',sym:'^NSEBANK'},{id:'tvix',cid:'tcvix',sym:'^INDIAVIX'}
+];
+async function fetchTicker() {
+  proxIdx = (proxIdx + 1) % PROX.length;
+  for (var i = 0; i < TIDX.length; i++) {
+    var idx = TIDX[i];
+    try {
+      var url = PROX[proxIdx] + encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/' + idx.sym + '?interval=1d&range=2d');
+      var r = await fetch(url, {signal: AbortSignal.timeout(4000)});
+      if (!r.ok) continue;
+      var jd = await r.json();
+      var meta = jd?.chart?.result?.[0]?.meta;
+      if (meta?.regularMarketPrice) {
+        var cur = meta.regularMarketPrice, prev = meta.previousClose || cur;
+        var chg = prev > 0 ? (cur-prev)/prev*100 : 0;
+        var el = document.getElementById(idx.id), cl = document.getElementById(idx.cid);
+        if (el) el.textContent = cur > 10000 ? Math.round(cur).toLocaleString('en-IN') : cur.toFixed(2);
+        if (cl) { cl.textContent = (chg>=0?'+':'') + chg.toFixed(2)+'%'; cl.className = 'tic ' + (chg>0.1?'up':chg<-0.1?'dn':'fl'); }
+        if (idx.sym==='^INDIAVIX') {
+          var vs = document.getElementById('s_vix'); if(vs) vs.value = cur<15?'Low (<15)':cur<20?'Medium (15-20)':'High (>20)';
+        }
+      }
+    } catch(ex) {}
+  }
+}
+
+// ── Scanner Control ────────────────────────────────────────────
+async function loadControl() {
+  if (!sb) return;
+  var today = getTodayIST();
+  try {
+    var res = await sb.from('scanner_control').select('*').eq('control_date', today).single();
+    if (res.data) {
+      D.control = res.data;
+      updateControlUI(res.data);
+    } else {
+      D.control = { is_enabled: false, stop_today: false, is_user_present: false, scan_count: 0 };
+      updateControlUI(D.control);
+    }
+  } catch(e) { console.warn('loadControl error:', e); }
+}
+
+function updateControlUI(ctrl) {
+  var dot = document.getElementById('scanDot');
+  var txt = document.getElementById('scanStatusText');
+  var pulse = document.getElementById('scanPulse');
+
+  if (ctrl.stop_today) {
+    dot.className = 'scan-dot stopped';
+    var reason = ctrl.stop_reason === 'auto_absence' ? 'Auto-stopped (no presence)' :
+                 ctrl.stop_reason === 'end_of_day'   ? 'End of day reset' :
+                 'Stopped by user';
+    txt.textContent = reason;
+    txt.style.color = 'var(--red)';
+    pulse.className = 'pulse off';
+  } else if (ctrl.is_enabled !== false) {
+    dot.className = 'scan-dot running';
+    txt.textContent = 'Scanner running (1-min loop)';
+    txt.style.color = 'var(--grn)';
+    pulse.className = 'pulse on';
+  } else {
+    dot.className = 'scan-dot stopped';
+    txt.textContent = 'Scanner idle';
+    txt.style.color = 'var(--t3)';
+    pulse.className = 'pulse off';
+  }
+
+  // Presence button
+  if (ctrl.is_user_present) {
+    var pb = document.getElementById('presentBtn');
+    pb.classList.add('active');
+    document.getElementById('presentLabel').textContent = '\u2713 Present — Scanner stays on';
+    document.getElementById('presentIcon').textContent = '\u2705';
+  }
+
+  // Scan count
+  document.getElementById('scanCount').textContent = 'Scans today: ' + (ctrl.scan_count || 0);
+
+  // Last scan time
+  if (ctrl.last_scan_at) {
+    var d = new Date(ctrl.last_scan_at);
+    var ts = d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:IST});
+    document.getElementById('lastScanTime').textContent = 'Last scan: ' + ts + ' IST';
+    document.getElementById('tblTs').textContent = 'Updated ' + ts + ' IST';
+  }
+}
+
+// ── Presence Logic ─────────────────────────────────────────────
+var warnShown     = false;
+var warnInterval  = null;
+var warnDeadline  = null;
+
+function checkPresenceGate() {
+  var mins = ISTmins();
+  var ctrl = D.control || {};
+
+  // 11:15-11:30: show countdown if not present
+  if (mins >= 11*60+15 && mins < 11*60+30 && !ctrl.is_user_present && !warnShown) {
+    warnShown = true;
+    showWarnOverlay();
+  }
+
+  // 11:30: auto-stop if not present
+  if (mins >= 11*60+30 && !ctrl.is_user_present && !ctrl.stop_today) {
+    autoShutdown();
+  }
+}
+
+function showWarnOverlay() {
+  document.getElementById('warnOv').style.display = 'flex';
+  var deadline = new Date(getISTNow());
+  deadline.setHours(11, 30, 0, 0);
+  warnInterval = setInterval(function() {
+    var remaining = Math.max(0, deadline - getISTNow());
+    var m = Math.floor(remaining/60000), s = Math.floor((remaining%60000)/1000);
+    document.getElementById('warnCountdown').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    if (remaining <= 0) { clearInterval(warnInterval); document.getElementById('warnOv').style.display = 'none'; }
+  }, 1000);
+}
+
+function dismissWarning() {
+  document.getElementById('warnOv').style.display = 'none';
+  if (warnInterval) clearInterval(warnInterval);
+}
+
+async function confirmPresence(fromWarning) {
+  var today = getTodayIST();
+  var now   = new Date().toISOString();
+  try {
+    await sb.from('scanner_control').upsert({
+      control_date:    today,
+      is_user_present: true,
+      presence_set_at: now,
+      presence_source: fromWarning ? 'warning_button' : 'button',
+    }, { onConflict: 'control_date' });
+  } catch(e) { console.warn('confirmPresence error:', e); }
+
+  var pb = document.getElementById('presentBtn');
+  pb.classList.add('active');
+  document.getElementById('presentLabel').textContent = '\u2713 Present \u2014 Scanner stays on';
+  document.getElementById('presentIcon').textContent = '\u2705';
+  if (fromWarning) { document.getElementById('warnOv').style.display = 'none'; if (warnInterval) clearInterval(warnInterval); }
+  if (D.control) D.control.is_user_present = true;
+}
+
+async function autoShutdown() {
+  var today = getTodayIST();
+  try {
+    await sb.from('scanner_control').upsert({
+      control_date: today,
+      stop_today:   true,
+      stop_reason:  'auto_absence',
+      stopped_at:   new Date().toISOString(),
+    }, { onConflict: 'control_date' });
+  } catch(e) {}
+  if (D.control) D.control.stop_today = true;
+  updateControlUI(D.control || {stop_today:true, stop_reason:'auto_absence'});
+}
+
+// ── Stop Today ─────────────────────────────────────────────────
+function openStopOverlay()  { document.getElementById('stopOv').style.display = 'flex'; }
+function closeStopOverlay() { document.getElementById('stopOv').style.display = 'none'; }
+
+async function confirmStop() {
+  closeStopOverlay();
+  var today = getTodayIST();
+  try {
+    await sb.from('scanner_control').upsert({
+      control_date: today,
+      stop_today:   true,
+      stop_reason:  'manual',
+      stopped_at:   new Date().toISOString(),
+    }, { onConflict: 'control_date' });
+  } catch(e) { console.warn('confirmStop error:', e); }
+  if (D.control) { D.control.stop_today = true; D.control.stop_reason = 'manual'; }
+  updateControlUI(D.control || {stop_today:true, stop_reason:'manual'});
+}
+
+// ── Scan Now ───────────────────────────────────────────────────
+async function triggerScanNow() {
+  // First reset stop_today flag
+  var today = getTodayIST();
+  try {
+    await sb.from('scanner_control').upsert({
+      control_date:    today,
+      stop_today:      false,
+      is_user_present: true,  // manual scan = presence confirmed
+      presence_set_at: new Date().toISOString(),
+      presence_source: 'manual_scan',
+    }, { onConflict: 'control_date' });
+  } catch(e) {}
+
+  // Fetch GitHub PAT from app_settings
+  var pat = null;
+  try {
+    var res = await sb.from('app_settings').select('value').eq('key','github_pat').single();
+    pat = res.data?.value;
+  } catch(e) {}
+
+  if (!pat) {
+    alert('GitHub PAT not found.\nGo to Settings tab in dashboard → save GitHub PAT in app_settings.\n\nKey name: github_pat');
+    return;
+  }
+
+  try {
+    var r = await fetch('https://api.github.com/repos/' + GH_REPO + '/actions/workflows/' + GH_WF + '/dispatches', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'main' }),
+    });
+    if (r.status === 204) {
+      document.getElementById('scanStatusText').textContent = 'Scan triggered (\u2248 30s to start)';
+      document.getElementById('scanStatusText').style.color = 'var(--grn)';
+      if (D.control) { D.control.stop_today = false; D.control.is_user_present = true; }
+    } else {
+      alert('GitHub dispatch failed: HTTP ' + r.status + '\nCheck your GitHub PAT has workflow scope.');
+    }
+  } catch(e) {
+    alert('GitHub dispatch error: ' + e.message);
+  }
+}
+
+// ── Scenario ───────────────────────────────────────────────────
+var SCENARIO_RULES = {
+  'A': { label:'A \u2014 Trending Bull', rule:'\u2705 BL trades only from Scanner 1 \u00b7 Full size \u00b7 Best window 9:20\u201310:30 AM', color:'var(--grn)' },
+  'B': { label:'B \u2014 Trending Bear', rule:'\u2705 BD trades only from Scanner 2 \u00b7 Full size \u00b7 Best window 9:20\u201310:30 AM', color:'var(--red)' },
+  'C': { label:'C \u2014 Gap Reversal',  rule:'\u26A0 No shorts before 10:00 AM \u00b7 FL watch after support holds \u00b7 50% size only', color:'var(--amb)' },
+  'D': { label:'D \u2014 Choppy',        rule:'\ud83d\udeab No trade today \u00b7 Scanner collects data only \u00b7 Close laptop', color:'var(--t3)' },
+};
+
+async function setScenario(sc) {
+  D.scenario = sc;
+  ['A','B','C','D'].forEach(function(s) {
+    var btn = document.getElementById('sc-'+s);
+    if (btn) btn.classList.toggle('on', s === sc);
+  });
+  var rule = SCENARIO_RULES[sc];
+  var el = document.getElementById('scRule');
+  el.textContent = rule ? rule.rule : '';
+  el.style.color  = rule ? rule.color : 'var(--t3)';
+
+  // Save to Supabase
+  var today = getTodayIST();
+  try {
+    await sb.from('daily_summary').upsert({ trade_date: today, scenario: sc }, { onConflict: 'trade_date' });
+  } catch(e) {}
+
+  // Update tags in display based on scenario
+  applyFilters();
+}
+
+async function loadScenario() {
+  var today = getTodayIST();
+  try {
+    var res = await sb.from('daily_summary').select('scenario').eq('trade_date', today).single();
+    if (res.data?.scenario) setScenario(res.data.scenario);
+  } catch(e) {}
+}
+
+// ── Tag logic ──────────────────────────────────────────────────
+function resolveTag(scanner, scenarioOverride) {
+  var sc = scenarioOverride || D.scenario;
+  if (scanner === 1) return (sc === 'B') ? 'FS' : 'BL';
+  return (sc === 'A') ? 'FL' : 'BD';
+}
+
+// ── Load Picks from Supabase ────────────────────────────────────
+async function loadPicks() {
+  if (!sb) return;
+  var today = getTodayIST();
+  try {
+    var res = await sb.from('daily_picks')
+      .select('*')
+      .eq('trade_date', today)
+      .order('score', {ascending: false});
+    if (res.data) {
+      D.picks = res.data;
+      applyFilters();
+      updateStats();
+    }
+  } catch(e) { console.warn('loadPicks error:', e); }
+}
+
+// ── Realtime subscription ──────────────────────────────────────
+function initRealtime() {
+  if (!sb) return;
+  var today = getTodayIST();
+  sb.channel('scanner_picks')
+    .on('postgres_changes', {event:'*', schema:'public', table:'daily_picks', filter:'trade_date=eq.'+today}, function(payload) {
+      loadPicks();
+      loadControl();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'scanner_control', filter:'control_date=eq.'+today}, function(payload) {
+      if (payload.new) { D.control = payload.new; updateControlUI(payload.new); }
+    })
+    .subscribe();
+}
+
+// ── Filters ────────────────────────────────────────────────────
+function getFilters() {
+  return {
+    tag:     document.getElementById('df_tag')?.value   || 'all',
+    score:   parseFloat(document.getElementById('df_score')?.value || 0),
+    freq:    parseInt(document.getElementById('df_freq')?.value    || 1),
+    volr:    parseFloat(document.getElementById('df_volr')?.value  || 0),
+  };
+}
+function resetFilters() {
+  document.getElementById('df_tag').value   = 'all';
+  document.getElementById('df_score').value = '0';
+  document.getElementById('df_freq').value  = '1';
+  document.getElementById('df_volr').value  = '0';
+  applyFilters();
+}
+
+function applyFilters() {
+  var f     = getFilters();
+  var data  = D.picks.filter(function(r) {
+    var chg = r.chg || r.change_pct || 0;
+    var tag = resolveTag(r.scanner);
+    if (f.tag !== 'all' && tag !== f.tag) return false;
+    if ((r.score || 0) < f.score) return false;
+    if ((r.freq_count || 0) < f.freq) return false;
+    if ((r.vol_ratio || 0) < f.volr) return false;
+    return true;
+  });
+  data = sortData(data);
+  renderTable(data, 'orbBody');
+  updateBadge('orb-badge', data.length);
+  renderRevTable();
+}
+
+function sortData(data) {
+  return data.slice().sort(function(a, b) {
+    var va = a[sortCol] || 0, vb = b[sortCol] || 0;
+    return sortAsc ? va - vb : vb - va;
+  });
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = false; }
+  applyFilters();
+}
+
+// ── Render Table ──────────────────────────────────────────────
+function renderTable(data, tbodyId) {
+  var tb = document.getElementById(tbodyId);
+  if (!data.length) {
+    tb.innerHTML = '<tr><td colspan="11" class="no-data">No stocks match current filters.<br><span style="font-size:11px">Scan in progress or outside market hours.</span></td></tr>';
+    return;
+  }
+  var h = '';
+  for (var i = 0; i < data.length; i++) {
+    var r      = data[i];
+    var sym    = r.symbol;
+    var tag    = resolveTag(r.scanner);
+    var chg    = r.change_pct || 0;
+    var freq   = r.freq_count || 0;
+    var streak = r.streak || 0;
+    var del    = r.delivery_pct || 0;
+    var score  = r.score || 0;
+    var vr     = r.vol_ratio || 0;
+    var ls     = (r.last_seen || '').substring(0,5);
+    var chgCol = chg >= 0 ? 'chg-up' : 'chg-dn';
+    var chgTxt = (chg >= 0 ? '+' : '') + parseFloat(chg).toFixed(2) + '%';
+    var stk    = streak >= 4 ? 'hot' : streak >= 2 ? 'med' : 'low';
+    var scoreCol = score >= 100 ? 'var(--grn)' : score >= 60 ? 'var(--amb)' : 'var(--t3)';
+    var sig1 = score >= 25 ? 'fill' : 'empty';
+    var sig2 = score >= 50 ? 'fill' : 'empty';
+    var sig3 = score >= 75 ? 'fill' : 'empty';
+    var sig4 = score >= 100 ? 'fill' : 'empty';
+    var isRed = (tag === 'BD' || tag === 'FS');
+    h += '<tr id="row-'+sym+'">'
+      + '<td style="padding-left:14px;font-weight:700;font-family:var(--mono)">' + sym
+      + ' <button onclick="copyTxt(\'' + sym + '\',this)" class="cp">\u29c9</button></td>'
+      + '<td><span class="tag tag-'+tag+'" onclick="cycleTag(\''+sym+'\','+r.scanner+')">' + tag + '</span></td>'
+      + '<td style="color:var(--t3);font-size:11px">' + (r.sector || '\u2014') + '</td>'
+      + '<td class="'+chgCol+'" style="font-family:var(--mono)">' + chgTxt + '</td>'
+      + '<td style="font-family:var(--mono);color:'+(vr>=3?'var(--grn)':vr>=2?'var(--amb)':'var(--t3)')+'">'+vr.toFixed(1)+'\u00d7</td>'
+      + '<td style="font-family:var(--mono);font-weight:700;color:'+(freq>=5?'var(--grn)':freq>=3?'var(--amb)':'var(--t3)')+'">'+freq+'</td>'
+      + '<td><span class="streak '+stk+'">'+streak+(streak>=3?'\u25b2':'')+'/'+freq+'</span></td>'
+      + '<td style="font-family:var(--mono);color:'+(del>=40?'var(--grn)':del>0?'var(--t2)':'var(--t4)')+'">'+((del>0)?del.toFixed(1)+'%':'\u2014')+'</td>'
+      + '<td style="font-family:var(--mono);font-weight:700;color:'+scoreCol+'"><span style="margin-right:5px">'+score.toFixed(0)+'</span>'
+      + '<span class="sig"><span class="sig-dot '+sig1+(isRed?' red':'')+'"></span><span class="sig-dot '+sig2+(isRed?' red':'')+'"></span><span class="sig-dot '+sig3+(isRed?' red':'')+'"></span><span class="sig-dot '+sig4+(isRed?' red':'')+'"></span></span></td>'
+      + '<td style="font-family:var(--mono);font-size:10px;color:var(--t3)">' + ls + '</td>'
+      + '<td><button onclick="toggleExpand(\''+sym+'\')" style="font-size:10px;cursor:pointer;color:var(--t3);border:1px solid var(--b1);border-radius:3px;background:var(--card);padding:2px 6px">\u25bc MTF</button></td>'
+      + '</tr>';
+  }
+  tb.innerHTML = h;
+}
+
+// ── Render Reversal Table (FL/FS setups) ───────────────────────
+function renderRevTable() {
+  var revData = D.picks.filter(function(r) { var t = resolveTag(r.scanner); return t==='FL' || t==='FS'; });
+  var tb = document.getElementById('revBody');
+  if (!revData.length) {
+    tb.innerHTML = '<tr><td colspan="10" class="no-data">No reversal setups. Will appear when ORB breaks with low volume and reverses.</td></tr>';
+    updateBadge('rev-badge', 0);
+    return;
+  }
+  var h = '';
+  for (var i = 0; i < revData.length; i++) {
+    var r = revData[i]; var sym = r.symbol; var tag = resolveTag(r.scanner);
+    var chg = r.change_pct||0; var freq = r.freq_count||0; var streak = r.streak||0; var score = r.score||0;
+    var chgTxt = (chg>=0?'+':'')+parseFloat(chg).toFixed(2)+'%';
+    h += '<tr>'
+      + '<td style="padding-left:14px;font-weight:700;font-family:var(--mono)">'+sym+' <button onclick="copyTxt(\''+sym+'\',this)" class="cp">\u29c9</button></td>'
+      + '<td><span class="tag tag-'+tag+'">'+tag+'</span></td>'
+      + '<td style="color:var(--t3);font-size:11px">'+(r.sector||'\u2014')+'</td>'
+      + '<td class="'+(chg>=0?'chg-up':'chg-dn')+'" style="font-family:var(--mono)">'+chgTxt+'</td>'
+      + '<td style="font-family:var(--mono)">'+(r.vol_ratio||0).toFixed(1)+'\u00d7</td>'
+      + '<td style="font-family:var(--mono);font-weight:700">'+freq+'</td>'
+      + '<td><span class="streak '+(streak>=3?'hot':streak>=2?'med':'low')+'">'+streak+'</span></td>'
+      + '<td style="font-family:var(--mono);font-weight:700;color:var(--amb)">'+score.toFixed(0)+'</td>'
+      + '<td style="font-family:var(--mono);font-size:10px;color:var(--t3)">'+(r.last_seen||'').substring(0,5)+'</td>'
+      + '<td><button onclick="toggleExpand(\''+sym+'\')" style="font-size:10px;cursor:pointer;color:var(--t3);border:1px solid var(--b1);border-radius:3px;background:var(--card);padding:2px 6px">\u25bc MTF</button></td>'
+      + '</tr>';
+  }
+  tb.innerHTML = h;
+  updateBadge('rev-badge', revData.length);
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+function updateStats() {
+  var all  = D.picks;
+  var bull = all.filter(function(r){return r.scanner===1;}).length;
+  var bear = all.filter(function(r){return r.scanner===2;}).length;
+  var hi   = all.filter(function(r){return (r.score||0)>=75;}).length;
+  var hot  = all.filter(function(r){return (r.streak||0)>=3;}).length;
+  var avg  = all.length ? Math.round(all.reduce(function(s,r){return s+(r.score||0);},0)/all.length) : 0;
+  document.getElementById('st_total').textContent = all.length;
+  document.getElementById('st_bull').textContent  = bull;
+  document.getElementById('st_bear').textContent  = bear;
+  document.getElementById('st_high').textContent  = hi;
+  document.getElementById('st_streak').textContent= hot;
+  document.getElementById('st_avg').textContent   = avg;
+}
+
+// ── Expand MTF Row ─────────────────────────────────────────────
+var expandedRows = new Set();
+async function toggleExpand(sym) {
+  var existingExpand = document.getElementById('expand-'+sym);
+  if (existingExpand) { existingExpand.remove(); expandedRows.delete(sym); return; }
+  expandedRows.add(sym);
+  var r = D.picks.find(function(p){ return p.symbol === sym; });
+  if (!r) return;
+
+  // Try to load MTF data from Supabase
+  var mtf = null;
+  var today = getTodayIST();
+  try {
+    var res = await sb.from('mtf_cache').select('*').eq('cache_date', today).eq('symbol', sym).single();
+    mtf = res.data;
+  } catch(e) {}
+
+  var row = document.getElementById('row-'+sym);
+  if (!row) return;
+  var cols = row.querySelectorAll('td').length;
+
+  var wt = mtf?.weekly_trend  || '?';
+  var dt = mtf?.daily_trend   || (mtf?.above_ema20 ? 'UP' : mtf?.above_ema20===false ? 'DOWN' : '?');
+  var m15 = mtf?.min15_trend  || '?';
+  var dema = mtf?.daily_ema20  ? '\u20b9'+mtf.daily_ema20 : '\u2014';
+  var dsma = mtf?.daily_sma50  ? '\u20b9'+mtf.daily_sma50 : '\u2014';
+  var drsi = mtf?.daily_rsi14  ? mtf.daily_rsi14 : '\u2014';
+  var wema = mtf?.weekly_ema20 ? '\u20b9'+mtf.weekly_ema20 : '\u2014';
+
+  function trendBadge(t) {
+    if (!t || t==='?') return '<span class="mtf-neu">?</span>';
+    return t==='UP' ? '<span class="mtf-bull">\u25b2 UP</span>' : '<span class="mtf-bear">\u25bc DOWN</span>';
+  }
+  function aboveBadge(above) {
+    if (above === null || above === undefined) return '<span class="mtf-neu">\u2014</span>';
+    return above ? '<span class="mtf-bull">\u2713 Above</span>' : '<span class="mtf-bear">\u2715 Below</span>';
+  }
+
+  var expandHtml = '<tr id="expand-'+sym+'" class="expand-row"><td colspan="'+cols+'">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    + '<div>'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:7px">Multi-Timeframe Analysis</div>'
+    + '<table class="mtf-table"><thead><tr><th>Timeframe</th><th>EMA20</th><th>SMA50</th><th>Trend</th><th>RSI</th></tr></thead><tbody>'
+    + '<tr><td>Weekly</td><td>'+aboveBadge(mtf?.above_sma50)+'</td><td>'+wema+'</td><td>'+trendBadge(wt)+'</td><td class="mtf-neu">\u2014</td></tr>'
+    + '<tr><td>Daily</td><td>'+aboveBadge(mtf?.above_ema20)+'</td><td>'+aboveBadge(mtf?.above_sma50)+'</td><td>'+trendBadge(dt)+'</td><td class="'+(parseFloat(drsi)>50?'mtf-bull':'mtf-bear')+'">'+(drsi!=='\u2014'?drsi:'?')+'</td></tr>'
+    + '<tr><td>15-min</td><td colspan="2" style="color:var(--t4);font-size:10px">Chart check needed</td><td>'+trendBadge(m15)+'</td><td class="mtf-neu">\u2014</td></tr>'
+    + '</tbody></table>'
+    + '</div>'
+    + '<div>'
+    + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:5px">Price Action Checklist</div>'
+    + buildChecklist(sym)
+    + '</div>'
+    + '</div>'
+    + '</td></tr>';
+
+  row.insertAdjacentHTML('afterend', expandHtml);
+  loadChecklist(sym);
+}
+
+// ── Checklist ──────────────────────────────────────────────────
+var CHKITEMS = [
+  {key:'weekly_sr',     label:'Weekly S/R marked'},
+  {key:'daily_sr',      label:'Daily S/R marked'},
+  {key:'min15_sr',      label:'15-min S/R marked'},
+  {key:'prev_day_high', label:'PDH marked on chart'},
+  {key:'prev_day_low',  label:'PDL marked on chart'},
+  {key:'orb_high_conf', label:'ORB High confirmed'},
+  {key:'orb_low_conf',  label:'ORB Low confirmed'},
+  {key:'vol_profile',   label:'Volume profile checked'},
+  {key:'pos_size_done', label:'Position size calculated'},
+  {key:'sl_noted',      label:'SL level noted'},
+  {key:'t1_noted',      label:'T1 level noted'},
+  {key:'t2_noted',      label:'T2 level noted'},
+];
+var checklistState = {};  // { sym: { key: bool } }
+
+function buildChecklist(sym) {
+  var state = checklistState[sym] || {};
+  var done  = CHKITEMS.filter(function(it){ return state[it.key]; }).length;
+  var pct   = Math.round(done/CHKITEMS.length*100);
+  var h = '<div class="chk-progress">'+done+'/'+CHKITEMS.length+' items checked'+
+          (done>=8?' \u2014 <span style="color:var(--grn)">\u2713 Ready to trade</span>':'')+'</div>'
+    + '<div class="chk-bar"><div class="chk-fill" style="width:'+pct+'%"></div></div>'
+    + '<div class="chk-grid" id="chk-'+sym+'">';
+  CHKITEMS.forEach(function(it) {
+    var done = state[it.key] || false;
+    h += '<div class="chk-item'+(done?' done':'')+'\" onclick=\"toggleChk(\''+sym+'\',\''+it.key+'\')">'
+      + '<div class="chk-cb"></div><span class="chk-lbl">'+it.label+'</span></div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+async function loadChecklist(sym) {
+  var today = getTodayIST();
+  try {
+    var res = await sb.from('stock_checklist').select('*').eq('trade_date',today).eq('symbol',sym).single();
+    if (res.data) {
+      var s = {};
+      CHKITEMS.forEach(function(it){ s[it.key] = res.data[it.key] || false; });
+      checklistState[sym] = s;
+      refreshChecklist(sym);
+    }
+  } catch(e) {}
+}
+
+async function toggleChk(sym, key) {
+  if (!checklistState[sym]) checklistState[sym] = {};
+  checklistState[sym][key] = !checklistState[sym][key];
+  var today = getTodayIST();
+  var row = { trade_date: today, symbol: sym };
+  CHKITEMS.forEach(function(it){ row[it.key] = checklistState[sym][it.key] || false; });
+  try { await sb.from('stock_checklist').upsert(row, {onConflict:'trade_date,symbol,strategy_code'}); } catch(e) {}
+  refreshChecklist(sym);
+}
+
+function refreshChecklist(sym) {
+  var container = document.getElementById('chk-'+sym);
+  var bar = container?.previousElementSibling;
+  var prog = bar?.previousElementSibling;
+  if (!container) return;
+  var state = checklistState[sym] || {};
+  var done  = CHKITEMS.filter(function(it){ return state[it.key]; }).length;
+  var pct   = Math.round(done/CHKITEMS.length*100);
+  if (prog) prog.innerHTML = done+'/'+CHKITEMS.length+' items checked'+(done>=8?' \u2014 <span style="color:var(--grn)">\u2713 Ready to trade</span>':'');
+  if (bar) { var fill = bar.querySelector('.chk-fill'); if (fill) fill.style.width = pct+'%'; }
+  container.querySelectorAll('.chk-item').forEach(function(el, idx) {
+    var k = CHKITEMS[idx].key;
+    if (state[k]) el.classList.add('done'); else el.classList.remove('done');
+  });
+  // If row is visible, update border
+  var pkRow = document.getElementById('row-'+sym);
+  if (pkRow && done >= 8) pkRow.style.borderLeft = '3px solid var(--grn)';
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function showTab(id, el) {
+  document.querySelectorAll('.tc').forEach(function(t){ t.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById('tab-'+id).classList.add('on');
+  el.classList.add('on');
+  if (id === 'orb') applyFilters();
+}
+
+function toggleFP(bodyId, chevId) {
+  var b = document.getElementById(bodyId);
+  var c = document.getElementById(chevId);
+  var show = !b.classList.contains('show');
+  b.classList.toggle('show', show);
+  c.classList.toggle('open', show);
+}
+
+// ── Cycle tag override ─────────────────────────────────────────
+async function cycleTag(sym, scanner) {
+  var tags = scanner===1 ? ['BL','FS'] : ['BD','FL'];
+  var r = D.picks.find(function(p){ return p.symbol===sym; });
+  var cur = resolveTag(scanner);
+  var next = tags[(tags.indexOf(cur)+1)%tags.length];
+  var today = getTodayIST();
+  try {
+    await sb.from('daily_picks').update({tag: next}).eq('trade_date',today).eq('symbol',sym);
+  } catch(e) {}
+  if (r) r.tag = next;
+  applyFilters();
+}
+
+// ── Badge ──────────────────────────────────────────────────────
+function updateBadge(id, n) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = n;
+}
+
+// ── Export / Copy ──────────────────────────────────────────────
+function exportCSV(tab) {
+  var rows = [['Symbol','Tag','Sector','Chg%','Vol Ratio','Freq','Streak','Del%','Score','Last Seen']];
+  D.picks.forEach(function(r) {
+    rows.push([r.symbol, resolveTag(r.scanner), r.sector||'', parseFloat(r.change_pct||0).toFixed(2), (r.vol_ratio||0).toFixed(1), r.freq_count||0, r.streak||0, (r.delivery_pct||0).toFixed(1), (r.score||0).toFixed(0), r.last_seen||'']);
+  });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([rows.map(function(r){return r.join(',');}).join('\n')],{type:'text/csv'}));
+  a.download = 'YS_Scanner_'+getTodayIST()+'.csv';
+  a.click();
+}
+function copySymbols() {
+  var f = getFilters();
+  var syms = D.picks.filter(function(r){ return (r.freq_count||0)>=f.freq && (r.score||0)>=f.score; }).map(function(r){ return r.symbol; });
+  navigator.clipboard.writeText(syms.join(','));
+  alert('Copied '+syms.length+' symbols to clipboard');
+}
+function copyTxt(txt, btn) {
+  navigator.clipboard.writeText(txt).then(function(){ var o=btn.textContent; btn.textContent='\u2713'; setTimeout(function(){btn.textContent=o;},1400); });
+}
+
+// ── DOMContentLoaded ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async function() {
+  initPwd();
+  initSupa();
+
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  fetchTicker();
+  setInterval(fetchTicker, 2000);  // 2-second market data refresh
+
+  await loadControl();
+  await loadScenario();
+  await loadPicks();
+
+  initRealtime();
+
+  // Check presence gate every 30 seconds
+  setInterval(function() {
+    checkPresenceGate();
+    loadControl();   // refresh control state
+  }, 30000);
+});
+</script>
+</body>
+</html>
